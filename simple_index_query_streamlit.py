@@ -5,17 +5,6 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# 重置Matplotlib配置，使用更兼容的方式处理中文
-plt.rcdefaults()
-plt.rcParams.update({
-    'font.family': ['sans-serif'],
-    'font.sans-serif': ['Arial Unicode MS', 'DejaVu Sans', 'Verdana', 'Helvetica', 'Arial'],
-    'axes.unicode_minus': False,
-    'axes.titlesize': 14,
-    'axes.labelsize': 12,
-    'legend.fontsize': 10
-})
-
 # 设置页面配置
 st.set_page_config(
     page_title="1999-2023年企业数字化转型指数查询系统",
@@ -28,7 +17,6 @@ class IndexQueryApp:
         self.data = []
         self.keyword_stats = []
         self.companies = []
-        self.stock_codes = []
         self.years = []
         self.load_data()
         self.main()
@@ -55,9 +43,8 @@ class IndexQueryApp:
             st.success(f"数字化转型指数数据加载完成，共 {len(self.data)} 条记录")
             
             if self.data:
-                # 提取企业列表、股票代码列表和年份列表
+                # 提取企业列表和年份列表
                 self.companies = sorted(list(set(row['企业名称'] for row in self.data)))
-                self.stock_codes = sorted(list(set(row['股票代码'] for row in self.data)))
                 self.years = sorted(list(set(int(row['年份']) for row in self.data)))
                 
                 # 转换数值字段为float
@@ -103,13 +90,7 @@ class IndexQueryApp:
             col1, col2, col3 = st.columns([2, 2, 1])
             
             with col1:
-                query_type = st.radio("查询类型", ["企业名称", "股票代码"])                
-                if query_type == "企业名称":
-                    company = st.selectbox("企业名称", options=["全部"] + self.companies)
-                    stock_code = "全部"
-                else:
-                    stock_code = st.selectbox("股票代码", options=["全部"] + self.stock_codes)
-                    company = "全部"
+                company = st.selectbox("企业名称", options=["全部"] + self.companies)
             
             with col2:
                 year_range = st.slider(
@@ -133,7 +114,6 @@ class IndexQueryApp:
             filtered_data = []
             for row in self.data:
                 if (company == "全部" or row['企业名称'] == company) and \
-                   (stock_code == "全部" or row['股票代码'] == stock_code) and \
                    start_year <= row['年份'] <= end_year:
                     filtered_data.append(row)
             
@@ -172,9 +152,9 @@ class IndexQueryApp:
         ax.plot(years, indices, marker='o', linestyle='-', color='b')
         
         # 设置图表属性
-        ax.set_title('数字化转型指数趋势')
-        ax.set_xlabel('年份')
-        ax.set_ylabel('数字化转型指数(0-100分)')
+        ax.set_title('数字化转型指数趋势', fontsize=14)
+        ax.set_xlabel('年份', fontsize=12)
+        ax.set_ylabel('数字化转型指数(0-100分)', fontsize=12)
         ax.grid(True, alpha=0.3)
         
         # 调整x轴刻度
@@ -209,18 +189,13 @@ class IndexQueryApp:
         ax.bar(years, blockchain_counts, bottom=[sum(x) for x in zip(ai_counts, bigdata_counts, cloud_counts)], label='区块链', color='purple')
         
         # 设置图表属性
-        ax.set_title('关键词使用趋势')
-        ax.set_xlabel('年份')
-        ax.set_ylabel('词频数')
+        ax.set_title('关键词使用趋势', fontsize=14)
+        ax.set_xlabel('年份', fontsize=12)
+        ax.set_ylabel('词频数', fontsize=12)
         ax.grid(True, alpha=0.3)
+        ax.legend()
         
-        # 确保图例显示正确
-        ax.legend(['人工智能', '大数据', '云计算', '区块链'])
-        
-        # 调整x轴刻度标签
-        plt.xticks(years, [str(year) for year in years], rotation=45)
-        
-        # 调整x轴刻度显示
+        # 调整x轴刻度
         if len(years) > 10:
             step = len(years) // 10
             ax.set_xticks(years[::step])
