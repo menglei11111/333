@@ -202,8 +202,16 @@ class IndexQueryApp:
             ax.set_xticks(years)
             ax.tick_params(axis='x', rotation=45)
             
-            # 设置y轴范围
-            ax.set_ylim(0, 100)
+            # 设置y轴范围，使趋势变化更明显
+            # 计算数据的最大值并加上一定余量
+            max_index = max(indices)
+            # 根据最大值动态调整y轴上限
+            if max_index < 50:
+                ax.set_ylim(0, 50)
+            elif max_index < 80:
+                ax.set_ylim(0, 80)
+            else:
+                ax.set_ylim(0, 100)
             
             # 添加网格线
             ax.grid(True, alpha=0.3)
