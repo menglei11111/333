@@ -3,8 +3,7 @@ import os
 import sys
 import streamlit as st
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 # 设置页面配置
 st.set_page_config(
@@ -157,32 +156,18 @@ class IndexQueryApp:
         years = [row['年份'] for row in sorted_data]
         indices = [row['数字化转型指数(0-100分)'] for row in sorted_data]
         
-        # 创建Plotly图表
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=years,
-            y=indices,
-            mode='lines+markers',
-            marker=dict(color='blue', size=8),
-            line=dict(color='blue', width=2),
-            name='数字化转型指数'
-        ))
+        # 创建数据框
+        df = pd.DataFrame({
+            '年份': years,
+            '数字化转型指数(0-100分)': indices
+        })
         
-        # 设置图表属性
-        fig.update_layout(
-            title='数字化转型指数趋势',
-            xaxis_title='年份',
-            yaxis_title='数字化转型指数(0-100分)',
-            width=1000,
-            height=600,
-            showlegend=True,
-            xaxis=dict(tickmode='auto'),
-            plot_bgcolor='white',
-            paper_bgcolor='white'
+        # 使用Streamlit内置的折线图
+        st.line_chart(
+            df.set_index('年份'),
+            use_container_width=True,
+            height=600
         )
-        
-        # 显示图表
-        st.plotly_chart(fig)
 
     def update_keyword_tab(self, data):
         """更新关键词分析图"""
@@ -198,61 +183,28 @@ class IndexQueryApp:
         cloud_counts = [row['云计算词频数'] for row in sorted_data]
         blockchain_counts = [row['区块链词频数'] for row in sorted_data]
         
-        # 创建Plotly堆叠柱状图
-        fig = go.Figure()
+        # 创建图表
+        fig, ax = plt.subplots(figsize=(10, 6))
         
-        fig.add_trace(go.Bar(
-            x=years,
-            y=ai_counts,
-            name='人工智能',
-            marker_color='red'
-        ))
+        # 使用英文标签避免中文显示问题
+        labels = ['AI', 'Big Data', 'Cloud', 'Blockchain']
+        colors = ['red', 'blue', 'green', 'purple']
         
-        fig.add_trace(go.Bar(
-            x=years,
-            y=bigdata_counts,
-            name='大数据',
-            marker_color='blue',
-            base=ai_counts
-        ))
-        
-        # 计算云计算的基线（人工智能+大数据）
-        cloud_base = [sum(x) for x in zip(ai_counts, bigdata_counts)]
-        fig.add_trace(go.Bar(
-            x=years,
-            y=cloud_counts,
-            name='云计算',
-            marker_color='green',
-            base=cloud_base
-        ))
-        
-        # 计算区块链的基线（人工智能+大数据+云计算）
-        blockchain_base = [sum(x) for x in zip(ai_counts, bigdata_counts, cloud_counts)]
-        fig.add_trace(go.Bar(
-            x=years,
-            y=blockchain_counts,
-            name='区块链',
-            marker_color='purple',
-            base=blockchain_base
-        ))
+        # 绘制堆叠柱状图
+        ax.bar(years, ai_counts, label=labels[0], color=colors[0])
+        ax.bar(years, bigdata_counts, bottom=ai_counts, label=labels[1], color=colors[1])
+        ax.bar(years, cloud_counts, bottom=[sum(x) for x in zip(ai_counts, bigdata_counts)], label=labels[2], color=colors[2])
+        ax.bar(years, blockchain_counts, bottom=[sum(x) for x in zip(ai_counts, bigdata_counts, cloud_counts)], label=labels[3], color=colors[3])
         
         # 设置图表属性
-        fig.update_layout(
-            title='关键词使用趋势',
-            xaxis_title='年份',
-            yaxis_title='词频数',
-            width=1000,
-            height=600,
-            barmode='stack',
-            showlegend=True,
-            legend=dict(font=dict(size=12)),
-            xaxis=dict(tickmode='auto'),
-            plot_bgcolor='white',
-            paper_bgcolor='white'
-        )
+        ax.set_title('Keyword Usage Trend')
+        ax.set_xlabel('Year')
+        ax.set_ylabel('Frequency')
+        ax.grid(True, alpha=0.3)
+        ax.legend()
         
         # 显示图表
-        st.plotly_chart(fig)
+        st.pyplot(fig)
 
     def update_detail_tab(self, data):
         """更新详细数据表格"""
