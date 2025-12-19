@@ -17,6 +17,7 @@ class IndexQueryApp:
         self.data = []
         self.keyword_stats = []
         self.companies = []
+        self.stock_codes = []
         self.years = []
         self.load_data()
         self.main()
@@ -43,8 +44,9 @@ class IndexQueryApp:
             st.success(f"数字化转型指数数据加载完成，共 {len(self.data)} 条记录")
             
             if self.data:
-                # 提取企业列表和年份列表
+                # 提取企业列表、股票代码列表和年份列表
                 self.companies = sorted(list(set(row['企业名称'] for row in self.data)))
+                self.stock_codes = sorted(list(set(row['股票代码'] for row in self.data)))
                 self.years = sorted(list(set(int(row['年份']) for row in self.data)))
                 
                 # 转换数值字段为float
@@ -90,7 +92,13 @@ class IndexQueryApp:
             col1, col2, col3 = st.columns([2, 2, 1])
             
             with col1:
-                company = st.selectbox("企业名称", options=["全部"] + self.companies)
+                query_type = st.radio("查询类型", ["企业名称", "股票代码"])                
+                if query_type == "企业名称":
+                    company = st.selectbox("企业名称", options=["全部"] + self.companies)
+                    stock_code = "全部"
+                else:
+                    stock_code = st.selectbox("股票代码", options=["全部"] + self.stock_codes)
+                    company = "全部"
             
             with col2:
                 year_range = st.slider(
@@ -114,6 +122,7 @@ class IndexQueryApp:
             filtered_data = []
             for row in self.data:
                 if (company == "全部" or row['企业名称'] == company) and \
+                   (stock_code == "全部" or row['股票代码'] == stock_code) and \
                    start_year <= row['年份'] <= end_year:
                     filtered_data.append(row)
             
