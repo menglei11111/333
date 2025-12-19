@@ -108,20 +108,29 @@ class IndexQueryApp:
                     index=0
                 )
             
-            # 移除查询按钮，实现自动更新
+            with col3:
+                # 添加查询按钮
+                query_button = st.button("查询", type="primary")
         
-        # 过滤数据 - 只按企业名称或股票代码过滤，不过滤年份
+        # 初始化filtered_data
         filtered_data = []
-        for row in self.data:
-            if (company == "全部" or row['企业名称'] == company) and \
-               (stock_code == "全部" or row['股票代码'] == stock_code):
-                filtered_data.append(row)
         
-        if not filtered_data:
-            st.info("没有找到符合条件的数据")
+        # 只在点击查询按钮后处理查询
+        if query_button:
+            # 过滤数据 - 只按企业名称或股票代码过滤，不过滤年份
+            for row in self.data:
+                if (company == "全部" or row['企业名称'] == company) and \
+                   (stock_code == "全部" or row['股票代码'] == stock_code):
+                    filtered_data.append(row)
+            
+            if not filtered_data:
+                st.info("没有找到符合条件的数据")
+                return
+            
+            st.success(f"找到 {len(filtered_data)} 条记录")
+        else:
+            # 未点击查询按钮时，不显示任何结果
             return
-        
-        st.success(f"找到 {len(filtered_data)} 条记录")
         
         # 创建结果选项卡
         tab1, tab2, tab3 = st.tabs(["指数趋势", "关键词分析", "详细数据"])
@@ -140,52 +149,71 @@ class IndexQueryApp:
         """更新指数趋势图"""
         st.subheader("数字化转型指数趋势")
         
-        # 按年份排序
-        sorted_data = sorted(data, key=lambda x: x['年份'])
-        
-        # 准备数据
-        years = [row['年份'] for row in sorted_data]
-        indices = [row['数字化转型指数(0-100分)'] for row in sorted_data]
-        
-        # 创建图表
-        fig, ax = plt.subplots(figsize=(10, 6))
-        
-        # 绘制折线图
-        ax.plot(years, indices, marker='o', linestyle='-', linewidth=2, markersize=6, color='#1f77b4')
-        
-        # 标注特定年份
-        if highlight_year != "不标注":
-            # 找到标注年份的数据点
-            for i, (year, index) in enumerate(zip(years, indices)):
-                if year == highlight_year:
-                    # 用红色圆圈高亮标注该点
-                    ax.plot(year, index, marker='o', markersize=10, color='red', alpha=0.8)
-                    # 添加年份标签
-                    ax.text(year, index + 2, f'{year}', ha='center', va='bottom', 
-                            fontsize=12, fontweight='bold', color='red')
-                    break
-        
-        # 设置图表属性
-        ax.set_title('数字化转型指数趋势', fontsize=14, fontweight='bold')
-        ax.set_xlabel('年份', fontsize=12)
-        ax.set_ylabel('数字化转型指数(0-100分)', fontsize=12)
-        
-        # 显示完整年份范围
-        if years:
+        try:
+            # 按年份排序
+            sorted_data = sorted(data, key=lambda x: x['年份'])
+            
+            # 准备数据
+            years = [row['年份'] for row in sorted_data]
+            indices = [row['数字化转型指数(0-100分)'] for row in sorted_data]
+            
+            # 添加调试信息
+            st.write(f"年份数据: {years}")
+            st.write(f"指数数据: {indices}")
+            st.write(f"标注年份: {highlight_year}")
+            
+            # 确保有数据
+            if not years or not indices:
+                st.warning("没有足够的数据绘制趋势图")
+                return
+            
+            # 创建图表
+            fig, ax = plt.subplots(figsize=(10, 6))
+            
+            # 绘制折线图
+            ax.plot(years, indices, marker='o', linestyle='-', linewidth=2, markersize=6, color='#1f77b4')
+            
+            # 标注特定年份
+            if highlight_year != "不标注":
+                # 确保highlight_year是整数
+                try:
+                    highlight_year_int = int(highlight_year)
+                    # 找到标注年份的数据点
+                    for i, (year, index) in enumerate(zip(years, indices)):
+                        if year == highlight_year_int:
+                            # 用红色圆圈高亮标注该点
+                            ax.plot(year, index, marker='o', markersize=10, color='red', alpha=0.8)
+                            # 添加年份标签
+                            ax.text(year, index + 2, f'{year}', ha='center', va='bottom', 
+                                    fontsize=12, fontweight='bold', color='red')
+                            break
+                except ValueError:
+                    st.warning(f"无效的标注年份: {highlight_year}")
+            
+            # 设置图表属性
+            ax.set_title('数字化转型指数趋势', fontsize=14, fontweight='bold')
+            ax.set_xlabel('年份', fontsize=12)
+            ax.set_ylabel('数字化转型指数(0-100分)', fontsize=12)
+            
+            # 显示完整年份范围
             ax.set_xlim(min(years) - 0.5, max(years) + 0.5)
             
             # 设置x轴刻度为整数年份
             ax.set_xticks(years)
             ax.tick_params(axis='x', rotation=45)
-        
-        # 设置y轴范围
-        ax.set_ylim(0, 100)
-        
-        # 添加网格线
-        ax.grid(True, alpha=0.3)
-        
-        # 显示图表
-        st.pyplot(fig)
+            
+            # 设置y轴范围
+            ax.set_ylim(0, 100)
+            
+            # 添加网格线
+            ax.grid(True, alpha=0.3)
+            
+            # 显示图表
+            st.pyplot(fig)
+        except Exception as e:
+            st.error(f"绘制趋势图时出错: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
     def update_keyword_tab(self, data):
         """更新关键词分析图"""
