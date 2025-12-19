@@ -101,36 +101,20 @@ class IndexQueryApp:
                     company = "全部"
             
             with col2:
-                if self.years:
-                    # 使用selectbox替代slider，让用户直接选择年份范围
-                    start_year = st.selectbox(
-                        "开始年份",
-                        options=self.years,
-                        index=0
-                    )
-                    end_year = st.selectbox(
-                        "结束年份",
-                        options=self.years,
-                        index=len(self.years)-1
-                    )
-                else:
-                    start_year = 1999
-                    end_year = 2023
-                    st.info("数据加载中，默认年份范围1999-2023")
+                # 单独的年份标注选择框
+                highlight_year = st.selectbox(
+                    "选择标注年份",
+                    options=["不标注"] + self.years,
+                    index=0
+                )
             
             # 移除查询按钮，实现自动更新
         
-        # 自动更新图表，不需要点击查询按钮
-        if start_year > end_year:
-            st.warning("开始年份不能大于结束年份")
-            return
-        
-        # 过滤数据
+        # 过滤数据 - 只按企业名称或股票代码过滤，不过滤年份
         filtered_data = []
         for row in self.data:
             if (company == "全部" or row['企业名称'] == company) and \
-               (stock_code == "全部" or row['股票代码'] == stock_code) and \
-               start_year <= row['年份'] <= end_year:
+               (stock_code == "全部" or row['股票代码'] == stock_code):
                 filtered_data.append(row)
         
         if not filtered_data:
@@ -143,7 +127,7 @@ class IndexQueryApp:
         tab1, tab2, tab3 = st.tabs(["指数趋势", "关键词分析", "详细数据"])
         
         with tab1:
-            self.update_trend_tab(filtered_data)
+            self.update_trend_tab(filtered_data, highlight_year)
         
         with tab2:
             self.update_keyword_tab(filtered_data)
@@ -152,7 +136,7 @@ class IndexQueryApp:
             self.update_detail_tab(filtered_data)
             self.update_stats_tab(filtered_data)
 
-    def update_trend_tab(self, data):
+    def update_trend_tab(self, data, highlight_year):
         """更新指数趋势图"""
         st.subheader("数字化转型指数趋势")
         
@@ -169,14 +153,26 @@ class IndexQueryApp:
         # 绘制折线图
         ax.plot(years, indices, marker='o', linestyle='-', linewidth=2, markersize=6, color='#1f77b4')
         
+        # 标注特定年份
+        if highlight_year != "不标注":
+            # 找到标注年份的数据点
+            for i, (year, index) in enumerate(zip(years, indices)):
+                if year == highlight_year:
+                    # 用红色圆圈高亮标注该点
+                    ax.plot(year, index, marker='o', markersize=10, color='red', alpha=0.8)
+                    # 添加年份标签
+                    ax.text(year, index + 2, f'{year}', ha='center', va='bottom', 
+                            fontsize=12, fontweight='bold', color='red')
+                    break
+        
         # 设置图表属性
         ax.set_title('数字化转型指数趋势', fontsize=14, fontweight='bold')
         ax.set_xlabel('年份', fontsize=12)
         ax.set_ylabel('数字化转型指数(0-100分)', fontsize=12)
         
-        # 自动定位到选择的年份范围
+        # 显示完整年份范围
         if years:
-            ax.set_xlim(min(years), max(years))
+            ax.set_xlim(min(years) - 0.5, max(years) + 0.5)
             
             # 设置x轴刻度为整数年份
             ax.set_xticks(years)
