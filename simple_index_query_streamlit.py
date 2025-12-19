@@ -101,49 +101,56 @@ class IndexQueryApp:
                     company = "全部"
             
             with col2:
-                year_range = st.slider(
-                    "年份范围",
-                    min_value=min(self.years) if self.years else 1999,
-                    max_value=max(self.years) if self.years else 2023,
-                    value=(min(self.years) if self.years else 1999, max(self.years) if self.years else 2023)
-                )
-                start_year, end_year = year_range
+                if self.years:
+                    # 使用selectbox替代slider，让用户直接选择年份范围
+                    start_year = st.selectbox(
+                        "开始年份",
+                        options=self.years,
+                        index=0
+                    )
+                    end_year = st.selectbox(
+                        "结束年份",
+                        options=self.years,
+                        index=len(self.years)-1
+                    )
+                else:
+                    start_year = 1999
+                    end_year = 2023
+                    st.info("数据加载中，默认年份范围1999-2023")
             
-            with col3:
-                query_btn = st.button("查询", type="primary", use_container_width=True)
+            # 移除查询按钮，实现自动更新
         
-        # 查询数据
-        if query_btn:
-            if start_year > end_year:
-                st.warning("开始年份不能大于结束年份")
-                return
-            
-            # 过滤数据
-            filtered_data = []
-            for row in self.data:
-                if (company == "全部" or row['企业名称'] == company) and \
-                   (stock_code == "全部" or row['股票代码'] == stock_code) and \
-                   start_year <= row['年份'] <= end_year:
-                    filtered_data.append(row)
-            
-            if not filtered_data:
-                st.info("没有找到符合条件的数据")
-                return
-            
-            st.success(f"找到 {len(filtered_data)} 条记录")
-            
-            # 创建结果选项卡
-            tab1, tab2, tab3 = st.tabs(["指数趋势", "关键词分析", "详细数据"])
-            
-            with tab1:
-                self.update_trend_tab(filtered_data)
-            
-            with tab2:
-                self.update_keyword_tab(filtered_data)
-            
-            with tab3:
-                self.update_detail_tab(filtered_data)
-                self.update_stats_tab(filtered_data)
+        # 自动更新图表，不需要点击查询按钮
+        if start_year > end_year:
+            st.warning("开始年份不能大于结束年份")
+            return
+        
+        # 过滤数据
+        filtered_data = []
+        for row in self.data:
+            if (company == "全部" or row['企业名称'] == company) and \
+               (stock_code == "全部" or row['股票代码'] == stock_code) and \
+               start_year <= row['年份'] <= end_year:
+                filtered_data.append(row)
+        
+        if not filtered_data:
+            st.info("没有找到符合条件的数据")
+            return
+        
+        st.success(f"找到 {len(filtered_data)} 条记录")
+        
+        # 创建结果选项卡
+        tab1, tab2, tab3 = st.tabs(["指数趋势", "关键词分析", "详细数据"])
+        
+        with tab1:
+            self.update_trend_tab(filtered_data)
+        
+        with tab2:
+            self.update_keyword_tab(filtered_data)
+        
+        with tab3:
+            self.update_detail_tab(filtered_data)
+            self.update_stats_tab(filtered_data)
 
     def update_trend_tab(self, data):
         """更新指数趋势图"""
@@ -156,18 +163,33 @@ class IndexQueryApp:
         years = [row['年份'] for row in sorted_data]
         indices = [row['数字化转型指数(0-100分)'] for row in sorted_data]
         
-        # 创建数据框
-        df = pd.DataFrame({
-            '年份': years,
-            '数字化转型指数(0-100分)': indices
-        })
+        # 创建图表
+        fig, ax = plt.subplots(figsize=(10, 6))
         
-        # 使用Streamlit内置的折线图
-        st.line_chart(
-            df.set_index('年份'),
-            use_container_width=True,
-            height=600
-        )
+        # 绘制折线图
+        ax.plot(years, indices, marker='o', linestyle='-', linewidth=2, markersize=6, color='#1f77b4')
+        
+        # 设置图表属性
+        ax.set_title('数字化转型指数趋势', fontsize=14, fontweight='bold')
+        ax.set_xlabel('年份', fontsize=12)
+        ax.set_ylabel('数字化转型指数(0-100分)', fontsize=12)
+        
+        # 自动定位到选择的年份范围
+        if years:
+            ax.set_xlim(min(years), max(years))
+            
+            # 设置x轴刻度为整数年份
+            ax.set_xticks(years)
+            ax.tick_params(axis='x', rotation=45)
+        
+        # 设置y轴范围
+        ax.set_ylim(0, 100)
+        
+        # 添加网格线
+        ax.grid(True, alpha=0.3)
+        
+        # 显示图表
+        st.pyplot(fig)
 
     def update_keyword_tab(self, data):
         """更新关键词分析图"""
