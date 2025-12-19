@@ -5,6 +5,17 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# 重置Matplotlib配置，使用更兼容的方式处理中文
+plt.rcdefaults()
+plt.rcParams.update({
+    'font.family': ['sans-serif'],
+    'font.sans-serif': ['Arial Unicode MS', 'DejaVu Sans', 'Verdana', 'Helvetica', 'Arial'],
+    'axes.unicode_minus': False,
+    'axes.titlesize': 14,
+    'axes.labelsize': 12,
+    'legend.fontsize': 10
+})
+
 # 设置页面配置
 st.set_page_config(
     page_title="1999-2023年企业数字化转型指数查询系统",
@@ -161,9 +172,9 @@ class IndexQueryApp:
         ax.plot(years, indices, marker='o', linestyle='-', color='b')
         
         # 设置图表属性
-        ax.set_title('数字化转型指数趋势', fontsize=14)
-        ax.set_xlabel('年份', fontsize=12)
-        ax.set_ylabel('数字化转型指数(0-100分)', fontsize=12)
+        ax.set_title('数字化转型指数趋势')
+        ax.set_xlabel('年份')
+        ax.set_ylabel('数字化转型指数(0-100分)')
         ax.grid(True, alpha=0.3)
         
         # 调整x轴刻度
@@ -198,13 +209,18 @@ class IndexQueryApp:
         ax.bar(years, blockchain_counts, bottom=[sum(x) for x in zip(ai_counts, bigdata_counts, cloud_counts)], label='区块链', color='purple')
         
         # 设置图表属性
-        ax.set_title('关键词使用趋势', fontsize=14)
-        ax.set_xlabel('年份', fontsize=12)
-        ax.set_ylabel('词频数', fontsize=12)
+        ax.set_title('关键词使用趋势')
+        ax.set_xlabel('年份')
+        ax.set_ylabel('词频数')
         ax.grid(True, alpha=0.3)
-        ax.legend()
         
-        # 调整x轴刻度
+        # 确保图例显示正确
+        ax.legend(['人工智能', '大数据', '云计算', '区块链'])
+        
+        # 调整x轴刻度标签
+        plt.xticks(years, [str(year) for year in years], rotation=45)
+        
+        # 调整x轴刻度显示
         if len(years) > 10:
             step = len(years) // 10
             ax.set_xticks(years[::step])
