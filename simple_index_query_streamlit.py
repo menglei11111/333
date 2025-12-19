@@ -3,7 +3,8 @@ import os
 import sys
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
+import plotly.graph_objects as go
 
 # 设置页面配置
 st.set_page_config(
@@ -17,6 +18,7 @@ class IndexQueryApp:
         self.data = []
         self.keyword_stats = []
         self.companies = []
+        self.stock_codes = []
         self.years = []
         self.load_data()
         self.main()
@@ -43,8 +45,9 @@ class IndexQueryApp:
             st.success(f"数字化转型指数数据加载完成，共 {len(self.data)} 条记录")
             
             if self.data:
-                # 提取企业列表和年份列表
+                # 提取企业列表、股票代码列表和年份列表
                 self.companies = sorted(list(set(row['企业名称'] for row in self.data)))
+                self.stock_codes = sorted(list(set(row['股票代码'] for row in self.data)))
                 self.years = sorted(list(set(int(row['年份']) for row in self.data)))
                 
                 # 转换数值字段为float
@@ -90,7 +93,13 @@ class IndexQueryApp:
             col1, col2, col3 = st.columns([2, 2, 1])
             
             with col1:
-                company = st.selectbox("企业名称", options=["全部"] + self.companies)
+                query_type = st.radio("查询类型", ["企业名称", "股票代码"])                
+                if query_type == "企业名称":
+                    company = st.selectbox("企业名称", options=["全部"] + self.companies)
+                    stock_code = "全部"
+                else:
+                    stock_code = st.selectbox("股票代码", options=["全部"] + self.stock_codes)
+                    company = "全部"
             
             with col2:
                 year_range = st.slider(
@@ -114,6 +123,7 @@ class IndexQueryApp:
             filtered_data = []
             for row in self.data:
                 if (company == "全部" or row['企业名称'] == company) and \
+                   (stock_code == "全部" or row['股票代码'] == stock_code) and \
                    start_year <= row['年份'] <= end_year:
                     filtered_data.append(row)
             
@@ -147,23 +157,32 @@ class IndexQueryApp:
         years = [row['年份'] for row in sorted_data]
         indices = [row['数字化转型指数(0-100分)'] for row in sorted_data]
         
-        # 创建图表
-        fig, ax = plt.subplots(figsize=(10, 6))
-        ax.plot(years, indices, marker='o', linestyle='-', color='b')
+        # 创建Plotly图表
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=years,
+            y=indices,
+            mode='lines+markers',
+            marker=dict(color='blue', size=8),
+            line=dict(color='blue', width=2),
+            name='数字化转型指数'
+        ))
         
         # 设置图表属性
-        ax.set_title('数字化转型指数趋势', fontsize=14)
-        ax.set_xlabel('年份', fontsize=12)
-        ax.set_ylabel('数字化转型指数(0-100分)', fontsize=12)
-        ax.grid(True, alpha=0.3)
-        
-        # 调整x轴刻度
-        if len(years) > 10:
-            step = len(years) // 10
-            ax.set_xticks(years[::step])
+        fig.update_layout(
+            title='数字化转型指数趋势',
+            xaxis_title='年份',
+            yaxis_title='数字化转型指数(0-100分)',
+            width=1000,
+            height=600,
+            showlegend=True,
+            xaxis=dict(tickmode='auto'),
+            plot_bgcolor='white',
+            paper_bgcolor='white'
+        )
         
         # 显示图表
-        st.pyplot(fig)
+        st.plotly_chart(fig)
 
     def update_keyword_tab(self, data):
         """更新关键词分析图"""
@@ -179,29 +198,61 @@ class IndexQueryApp:
         cloud_counts = [row['云计算词频数'] for row in sorted_data]
         blockchain_counts = [row['区块链词频数'] for row in sorted_data]
         
-        # 创建图表
-        fig, ax = plt.subplots(figsize=(10, 6))
+        # 创建Plotly堆叠柱状图
+        fig = go.Figure()
         
-        # 绘制堆叠柱状图
-        ax.bar(years, ai_counts, label='人工智能', color='red')
-        ax.bar(years, bigdata_counts, bottom=ai_counts, label='大数据', color='blue')
-        ax.bar(years, cloud_counts, bottom=[sum(x) for x in zip(ai_counts, bigdata_counts)], label='云计算', color='green')
-        ax.bar(years, blockchain_counts, bottom=[sum(x) for x in zip(ai_counts, bigdata_counts, cloud_counts)], label='区块链', color='purple')
+        fig.add_trace(go.Bar(
+            x=years,
+            y=ai_counts,
+            name='人工智能',
+            marker_color='red'
+        ))
+        
+        fig.add_trace(go.Bar(
+            x=years,
+            y=bigdata_counts,
+            name='大数据',
+            marker_color='blue',
+            base=ai_counts
+        ))
+        
+        # 计算云计算的基线（人工智能+大数据）
+        cloud_base = [sum(x) for x in zip(ai_counts, bigdata_counts)]
+        fig.add_trace(go.Bar(
+            x=years,
+            y=cloud_counts,
+            name='云计算',
+            marker_color='green',
+            base=cloud_base
+        ))
+        
+        # 计算区块链的基线（人工智能+大数据+云计算）
+        blockchain_base = [sum(x) for x in zip(ai_counts, bigdata_counts, cloud_counts)]
+        fig.add_trace(go.Bar(
+            x=years,
+            y=blockchain_counts,
+            name='区块链',
+            marker_color='purple',
+            base=blockchain_base
+        ))
         
         # 设置图表属性
-        ax.set_title('关键词使用趋势', fontsize=14)
-        ax.set_xlabel('年份', fontsize=12)
-        ax.set_ylabel('词频数', fontsize=12)
-        ax.grid(True, alpha=0.3)
-        ax.legend()
-        
-        # 调整x轴刻度
-        if len(years) > 10:
-            step = len(years) // 10
-            ax.set_xticks(years[::step])
+        fig.update_layout(
+            title='关键词使用趋势',
+            xaxis_title='年份',
+            yaxis_title='词频数',
+            width=1000,
+            height=600,
+            barmode='stack',
+            showlegend=True,
+            legend=dict(font=dict(size=12)),
+            xaxis=dict(tickmode='auto'),
+            plot_bgcolor='white',
+            paper_bgcolor='white'
+        )
         
         # 显示图表
-        st.pyplot(fig)
+        st.plotly_chart(fig)
 
     def update_detail_tab(self, data):
         """更新详细数据表格"""
